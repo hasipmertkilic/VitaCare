@@ -137,7 +137,7 @@ class VitalChart extends StatelessWidget {
                   LineChartData(
                     lineTouchData: LineTouchData(
                       touchTooltipData: LineTouchTooltipData(
-                        getTooltipColor: (spot) => chartColor,
+                        tooltipBgColor: chartColor,
                         getTooltipItems: (ts) => ts
                             .map(
                               (s) => LineTooltipItem(

@@ -1,16 +1,25 @@
-# vitacare
+# VitaCare 🩺
 
-A new Flutter project.
+VitaCare, sağlıklı yaşamı desteklemek amacıyla geliştirilen bir mobil uygulamadır. 
+Kullanıcıların günlük sağlık verilerini takip etmelerini ve yaşam alışkanlıklarını 
+daha bilinçli şekilde yönetmelerini hedefler.
 
-## Getting Started
+## 🚀 Özellikler
+- Günlük sağlık takibi
+- Kullanıcı dostu arayüz
+- Mobil uyumlu modern tasarım
+- Genişletilebilir altyapı
 
-This project is a starting point for a Flutter application.
+## 🛠 Kullanılan Teknolojiler
+- Flutter
+- Dart
+- Firebase (Auth, Firestore)
 
-A few resources to get you started if this is your first Flutter project:
+## 📱 Kurulum
+Projeyi lokal ortamda çalıştırmak için:
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+git clone https://github.com/hasipmertkilic/VitaCare.git
+cd VitaCare
+flutter pub get
+flutter run# VitaCare 
