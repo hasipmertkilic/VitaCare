@@ -27,19 +27,14 @@ class _VitalInputScreenState extends State<VitalInputScreen> {
   bool isSyncingHealthConnect = false;
   HealthConnectData? lastHealthData;
 
-  Future<void> _fetchFromHealthConnect({bool forceSimulation = false}) async {
+  Future<void> _fetchFromHealthConnect() async {
     HapticFeedback.mediumImpact();
     setState(() {
       isSyncingHealthConnect = true;
     });
 
     try {
-      // Simulate sync delay for clean UI feedback
-      await Future.delayed(const Duration(milliseconds: 900));
-
-      final data = await _healthConnectService.fetchHealthConnectData(
-        forceSimulation: forceSimulation,
-      );
+      final data = await _healthConnectService.fetchHealthConnectData();
 
       if (!mounted) return;
 
@@ -65,7 +60,7 @@ class _VitalInputScreenState extends State<VitalInputScreen> {
 
       HapticFeedback.heavyImpact();
       _showSnack(
-        "💚 Health Connect üzerinden (${data.deviceName}) veriler aktarıldı!",
+        "💚 Health Connect (${data.deviceName}) verileri aktarıldı!",
         isError: false,
       );
     } catch (e) {
@@ -73,8 +68,11 @@ class _VitalInputScreenState extends State<VitalInputScreen> {
       setState(() {
         isSyncingHealthConnect = false;
       });
+      final errorMsg = e.toString().replaceAll('Exception: ', '');
       _showSnack(
-        "Health Connect'ten veri alınırken bir sorun oluştu.",
+        errorMsg.isNotEmpty
+            ? errorMsg
+            : "Health Connect'ten veri alınırken bir sorun oluştu.",
         isError: true,
       );
     }

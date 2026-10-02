@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:health/health.dart';
 
@@ -13,7 +12,7 @@ class HealthConnectData {
   final String sourceApp;
   final DateTime timestamp;
   final bool isSimulated;
-  final int batteryLevel;
+  final int? batteryLevel;
 
   HealthConnectData({
     this.heartRate,
@@ -21,11 +20,11 @@ class HealthConnectData {
     this.diastolic,
     this.oxygen,
     this.temperature,
-    this.deviceName = 'Galaxy Watch 6 (Health Connect)',
+    this.deviceName = 'Health Connect',
     this.sourceApp = 'Health Connect',
     DateTime? timestamp,
     this.isSimulated = false,
-    this.batteryLevel = 88,
+    this.batteryLevel,
   }) : timestamp = timestamp ?? DateTime.now();
 }
 
@@ -67,140 +66,152 @@ class HealthConnectService {
     }
   }
 
-  /// Reads latest smartwatch metrics from Health Connect API or fallback simulation.
-  Future<HealthConnectData> fetchHealthConnectData({
-    bool forceSimulation = false,
-  }) async {
-    if (forceSimulation) {
-      return _generateSimulatedData();
+  /// Reads latest smartwatch metrics from Health Connect API on Android.
+  Future<HealthConnectData> fetchHealthConnectData() async {
+    if (!kIsWeb && Platform.isAndroid) {
+      try {
+        final status = await _health.getHealthConnectSdkStatus();
+        if (status != HealthConnectSdkStatus.sdkAvailable) {
+          await _health.installHealthConnect();
+          throw Exception('Health Connect uygulaması kullanılabilir değil veya yüklü değil. Yükleme sayfası açıldı.');
+        }
+      } catch (e) {
+        if (e is Exception) rethrow;
+        debugPrint('Health Connect SDK kontrol hatası: $e');
+      }
     }
 
+    await _configure();
+
+    // Required Health Connect data types
+    final types = <HealthDataType>[
+      HealthDataType.HEART_RATE,
+      HealthDataType.BLOOD_PRESSURE_SYSTOLIC,
+      HealthDataType.BLOOD_PRESSURE_DIASTOLIC,
+      HealthDataType.BLOOD_OXYGEN,
+      HealthDataType.BODY_TEMPERATURE,
+    ];
+
+    final permissions = types.map((_) => HealthDataAccess.READ).toList();
+
+    bool hasPermissions = false;
     try {
-      await _configure();
-
-      // Required HealthConnect data types
-      final types = <HealthDataType>[
-        HealthDataType.HEART_RATE,
-        HealthDataType.BLOOD_PRESSURE_SYSTOLIC,
-        HealthDataType.BLOOD_PRESSURE_DIASTOLIC,
-        HealthDataType.BLOOD_OXYGEN,
-        HealthDataType.BODY_TEMPERATURE,
-      ];
-
-      final permissions = types.map((_) => HealthDataAccess.READ).toList();
-
-      bool hasPermissions = await _health.hasPermissions(types, permissions: permissions) ?? false;
+      hasPermissions = await _health.hasPermissions(types, permissions: permissions) ?? false;
       if (!hasPermissions) {
         hasPermissions = await _health.requestAuthorization(types, permissions: permissions);
       }
+    } catch (e) {
+      debugPrint('Health Connect izin isteme hatası: $e');
+    }
 
-      if (!hasPermissions) {
-        debugPrint('Health Connect permissions not granted, using simulated Health Connect values.');
-        return _generateSimulatedData();
-      }
+    if (!hasPermissions) {
+      throw Exception('Health Connect erişim izinleri verilmedi. Lütfen ayarları kontrol edin.');
+    }
 
-      final now = DateTime.now();
-      final startTime = now.subtract(const Duration(hours: 24));
+    // Query recorded data from the last 30 days
+    final now = DateTime.now();
+    final startTime = now.subtract(const Duration(days: 30));
 
-      List<HealthDataPoint> healthData = await _health.getHealthDataFromTypes(
+    List<HealthDataPoint> healthData = [];
+    try {
+      healthData = await _health.getHealthDataFromTypes(
         types: types,
         startTime: startTime,
         endTime: now,
       );
-
       healthData = _health.removeDuplicates(healthData);
+    } catch (e) {
+      debugPrint('Health Connect veri çekme hatası: $e');
+      throw Exception('Health Connect verileri okunurken bir hata oluştu: $e');
+    }
 
-      if (healthData.isEmpty) {
-        debugPrint('No Health Connect records found in last 24h, returning live smartwatch readout.');
-        return _generateSimulatedData();
+    if (healthData.isEmpty) {
+      throw Exception('Health Connect uygulamasında henüz kaydedilmiş bir sağlık verisi bulunamadı.');
+    }
+
+    int? heartRate;
+    int? systolic;
+    int? diastolic;
+    int? oxygen;
+    double? temperature;
+
+    DateTime? latestHrTime;
+    DateTime? latestBpSysTime;
+    DateTime? latestBpDiaTime;
+    DateTime? latestOxTime;
+    DateTime? latestTempTime;
+
+    String deviceName = 'Health Connect';
+    String sourceApp = 'Health Connect';
+
+    for (var point in healthData) {
+      final val = point.value;
+      final time = point.dateTo;
+
+      if (point.sourceName.isNotEmpty && point.sourceName != 'flutter') {
+        deviceName = point.sourceName;
+      }
+      if (point.sourceId.isNotEmpty) {
+        sourceApp = point.sourceId;
       }
 
-      int? heartRate;
-      int? systolic;
-      int? diastolic;
-      int? oxygen;
-      double? temperature;
-      String deviceName = 'Galaxy Watch (Health Connect)';
-      String sourceApp = 'Health Connect';
-
-      for (var point in healthData) {
-        final val = point.value;
-        if (point.type == HealthDataType.HEART_RATE) {
-          if (val is NumericHealthValue) {
+      if (point.type == HealthDataType.HEART_RATE) {
+        if (val is NumericHealthValue) {
+          if (latestHrTime == null || time.isAfter(latestHrTime)) {
+            latestHrTime = time;
             heartRate = val.numericValue.round();
           }
-        } else if (point.type == HealthDataType.BLOOD_PRESSURE_SYSTOLIC) {
-          if (val is NumericHealthValue) {
+        }
+      } else if (point.type == HealthDataType.BLOOD_PRESSURE_SYSTOLIC) {
+        if (val is NumericHealthValue) {
+          if (latestBpSysTime == null || time.isAfter(latestBpSysTime)) {
+            latestBpSysTime = time;
             systolic = val.numericValue.round();
           }
-        } else if (point.type == HealthDataType.BLOOD_PRESSURE_DIASTOLIC) {
-          if (val is NumericHealthValue) {
+        }
+      } else if (point.type == HealthDataType.BLOOD_PRESSURE_DIASTOLIC) {
+        if (val is NumericHealthValue) {
+          if (latestBpDiaTime == null || time.isAfter(latestBpDiaTime)) {
+            latestBpDiaTime = time;
             diastolic = val.numericValue.round();
           }
-        } else if (point.type == HealthDataType.BLOOD_OXYGEN) {
-          if (val is NumericHealthValue) {
+        }
+      } else if (point.type == HealthDataType.BLOOD_OXYGEN) {
+        if (val is NumericHealthValue) {
+          if (latestOxTime == null || time.isAfter(latestOxTime)) {
+            latestOxTime = time;
             final raw = val.numericValue;
             oxygen = (raw <= 1.0 ? raw * 100 : raw).round();
           }
-        } else if (point.type == HealthDataType.BODY_TEMPERATURE) {
-          if (val is NumericHealthValue) {
+        }
+      } else if (point.type == HealthDataType.BODY_TEMPERATURE) {
+        if (val is NumericHealthValue) {
+          if (latestTempTime == null || time.isAfter(latestTempTime)) {
+            latestTempTime = time;
             temperature = double.parse(val.numericValue.toStringAsFixed(1));
           }
         }
-
-        if (point.sourceName.isNotEmpty) {
-          deviceName = '${point.sourceName} (Health Connect)';
-        }
-        if (point.sourceId.isNotEmpty) {
-          sourceApp = point.sourceId;
-        }
       }
-
-      final fallback = _generateSimulatedData();
-      return HealthConnectData(
-        heartRate: heartRate ?? fallback.heartRate,
-        systolic: systolic ?? fallback.systolic,
-        diastolic: diastolic ?? fallback.diastolic,
-        oxygen: oxygen ?? fallback.oxygen,
-        temperature: temperature ?? fallback.temperature,
-        deviceName: deviceName,
-        sourceApp: sourceApp,
-        isSimulated: false,
-        batteryLevel: 90,
-      );
-    } catch (e) {
-      debugPrint('Error fetching data from Health Connect: $e. Using fallback.');
-      return _generateSimulatedData();
     }
-  }
 
-  HealthConnectData _generateSimulatedData() {
-    final random = Random();
-    final heartRate = 72 + random.nextInt(12); // 72 - 84 bpm
-    final systolic = 118 + random.nextInt(8); // 118 - 125 mmHg
-    final diastolic = 76 + random.nextInt(6); // 76 - 81 mmHg
-    final oxygen = 97 + random.nextInt(3); // 97 - 99 %
-    final tempDecimals = (random.nextInt(3)) / 10.0;
-    final temperature = 36.5 + tempDecimals; // 36.5 - 36.7 °C
-
-    final devices = [
-      'Galaxy Watch 6 (Health Connect)',
-      'Pixel Watch 2 (Health Connect)',
-      'Garmin Venu 3 (Health Connect)',
-      'Fitbit Sense 2 (Health Connect)',
-    ];
-    final selectedDevice = devices[random.nextInt(devices.length)];
+    if (heartRate == null &&
+        systolic == null &&
+        diastolic == null &&
+        oxygen == null &&
+        temperature == null) {
+      throw Exception('Health Connect verileri arasında geçerli bir değer okunamadı.');
+    }
 
     return HealthConnectData(
       heartRate: heartRate,
       systolic: systolic,
       diastolic: diastolic,
       oxygen: oxygen,
-      temperature: double.parse(temperature.toStringAsFixed(1)),
-      deviceName: selectedDevice,
-      sourceApp: 'Health Connect',
-      isSimulated: true,
-      batteryLevel: 85 + random.nextInt(12),
+      temperature: temperature,
+      deviceName: deviceName,
+      sourceApp: sourceApp,
+      isSimulated: false,
     );
   }
 }
+
