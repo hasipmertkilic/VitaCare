@@ -212,10 +212,12 @@ class _ProfileScreenState extends State<ProfileScreen>
                       keyboardType: TextInputType.emailAddress,
                       decoration: _dialogInputDecoration('Yeni e-posta adresi'),
                       validator: (v) {
-                        if (v == null || v.isEmpty)
+                        if (v == null || v.isEmpty) {
                           return 'E-posta zorunludur.';
-                        if (!v.contains('@'))
+                        }
+                        if (!v.contains('@')) {
                           return 'Geçerli bir e-posta girin.';
+                        }
                         return null;
                       },
                     ),
@@ -562,7 +564,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: LinearGradient(
-              colors: [AppColors.primary.withOpacity(0.6), AppColors.primary],
+              colors: [AppColors.primary.withValues(alpha: 0.6), AppColors.primary],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -589,7 +591,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 if (_isUploadingImage)
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.4),
+                      color: Colors.black.withValues(alpha: 0.4),
                       shape: BoxShape.circle,
                     ),
                     child: const Center(
@@ -613,15 +615,15 @@ class _ProfileScreenState extends State<ProfileScreen>
             child: InkWell(
               customBorder: const CircleBorder(),
               onTap: () {
-                print(
+                debugPrint(
                   "📸 KAMERA BUTONUNA TIKLANDI!",
-                ); // Tıklandığını terminalden gör
+                );
                 if (!_isUploadingImage) {
                   _pickAndUploadImage();
                 }
               },
               child: const Padding(
-                padding: EdgeInsets.all(12.0), // Tıklama alanını kocaman yaptık
+                padding: EdgeInsets.all(12.0),
                 child: Icon(
                   Icons.camera_alt_rounded,
                   color: Colors.white,
@@ -687,7 +689,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           else
             ValueListenableBuilder<TextEditingValue>(
               valueListenable: _nameController,
-              builder: (_, value, __) {
+              builder: (_, value, _) {
                 final isDirty = value.text.trim() != _name;
                 return isDirty
                     ? GestureDetector(
@@ -760,7 +762,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             child: Container(
               padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
+                color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(
@@ -792,7 +794,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.1),
+                    color: Colors.grey.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -856,7 +858,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       borderRadius: BorderRadius.circular(16),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.04),
+          color: Colors.black.withValues(alpha: 0.04),
           blurRadius: 10,
           offset: const Offset(0, 4),
         ),
@@ -868,7 +870,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Icon(icon, color: color, size: 20),
@@ -922,7 +924,7 @@ class _ProfileCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -933,7 +935,7 @@ class _ProfileCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
+              color: AppColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: AppColors.primary, size: 20),

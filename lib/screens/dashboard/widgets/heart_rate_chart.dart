@@ -39,13 +39,11 @@ class HeartRateChart extends StatelessWidget {
     double yInterval = (maxY - minY) > 100 ? 40 : 20;
 
     // 🧠 3. X EKSENİ (ÖLÇÜMLER) ARALIĞI
-    // Artık gün değil, ölçüm sırasını temsil ediyor
     double xInterval = 1;
     if (values.length > 14) {
-      xInterval = (values.length / 5)
-          .ceilToDouble(); // Çok ölçüm varsa aralıkları aç
+      xInterval = (values.length / 5).ceilToDouble();
     } else if (values.length > 7) {
-      xInterval = 2; // 7-14 ölçüm varsa 2 ölçümde bir yazdır
+      xInterval = 2;
     }
 
     return Container(
@@ -56,7 +54,7 @@ class HeartRateChart extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -76,14 +74,14 @@ class HeartRateChart extends StatelessWidget {
             verticalInterval: xInterval,
             getDrawingHorizontalLine: (value) {
               return FlLine(
-                color: Colors.grey.withOpacity(0.15),
+                color: Colors.grey.withValues(alpha: 0.15),
                 strokeWidth: 1,
                 dashArray: [5, 5],
               );
             },
             getDrawingVerticalLine: (value) {
               return FlLine(
-                color: Colors.grey.withOpacity(0.1),
+                color: Colors.grey.withValues(alpha: 0.1),
                 strokeWidth: 1,
               );
             },
@@ -128,7 +126,7 @@ class HeartRateChart extends StatelessWidget {
                   return Padding(
                     padding: const EdgeInsets.only(top: 8.0),
                     child: Text(
-                      "#${value.toInt() + 1}", // 1.G yerine #1, #2, #3 şeklinde ölçüm sırası yazacak
+                      "#${value.toInt() + 1}",
                       style: const TextStyle(
                         color: Colors.grey,
                         fontSize: 12,
@@ -144,10 +142,10 @@ class HeartRateChart extends StatelessWidget {
           borderData: FlBorderData(
             show: true,
             border: Border(
-              bottom: BorderSide(color: Colors.grey.withOpacity(0.2), width: 2),
-              left: BorderSide(color: Colors.transparent, width: 0),
-              right: BorderSide(color: Colors.transparent, width: 0),
-              top: BorderSide(color: Colors.transparent, width: 0),
+              bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2), width: 2),
+              left: const BorderSide(color: Colors.transparent, width: 0),
+              right: const BorderSide(color: Colors.transparent, width: 0),
+              top: const BorderSide(color: Colors.transparent, width: 0),
             ),
           ),
 
@@ -178,8 +176,8 @@ class HeartRateChart extends StatelessWidget {
                 show: true,
                 gradient: LinearGradient(
                   colors: [
-                    Colors.redAccent.withOpacity(0.2),
-                    Colors.redAccent.withOpacity(0.0),
+                    Colors.redAccent.withValues(alpha: 0.2),
+                    Colors.redAccent.withValues(alpha: 0.0),
                   ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,

@@ -131,8 +131,8 @@ class _DashboardScreenState extends State<DashboardScreen>
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, animation, __) => VitalDetailScreen(vitalType: type),
-        transitionsBuilder: (_, animation, __, child) => FadeTransition(
+        pageBuilder: (_, animation, _) => VitalDetailScreen(vitalType: type),
+        transitionsBuilder: (_, animation, _, child) => FadeTransition(
           opacity: animation,
           child: SlideTransition(
             position:
@@ -334,7 +334,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),

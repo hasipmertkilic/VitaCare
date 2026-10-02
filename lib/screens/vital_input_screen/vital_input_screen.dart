@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
 import '../../core/theme/app_colors.dart';
+import '../../services/health_connect_service.dart';
 
 class VitalInputScreen extends StatefulWidget {
   const VitalInputScreen({super.key});
@@ -19,14 +21,69 @@ class _VitalInputScreenState extends State<VitalInputScreen> {
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final HealthConnectService _healthConnectService = HealthConnectService();
 
   bool isLoading = false;
+  bool isSyncingHealthConnect = false;
+  HealthConnectData? lastHealthData;
+
+  Future<void> _fetchFromHealthConnect({bool forceSimulation = false}) async {
+    HapticFeedback.mediumImpact();
+    setState(() {
+      isSyncingHealthConnect = true;
+    });
+
+    try {
+      // Simulate sync delay for clean UI feedback
+      await Future.delayed(const Duration(milliseconds: 900));
+
+      final data = await _healthConnectService.fetchHealthConnectData(
+        forceSimulation: forceSimulation,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        if (data.heartRate != null) {
+          heartRateController.text = data.heartRate.toString();
+        }
+        if (data.systolic != null) {
+          systolicController.text = data.systolic.toString();
+        }
+        if (data.diastolic != null) {
+          diastolicController.text = data.diastolic.toString();
+        }
+        if (data.oxygen != null) {
+          oxygenController.text = data.oxygen.toString();
+        }
+        if (data.temperature != null) {
+          temperatureController.text = data.temperature.toString();
+        }
+        lastHealthData = data;
+        isSyncingHealthConnect = false;
+      });
+
+      HapticFeedback.heavyImpact();
+      _showSnack(
+        "💚 Health Connect üzerinden (${data.deviceName}) veriler aktarıldı!",
+        isError: false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        isSyncingHealthConnect = false;
+      });
+      _showSnack(
+        "Health Connect'ten veri alınırken bir sorun oluştu.",
+        isError: true,
+      );
+    }
+  }
 
   Future<void> saveVitals() async {
     final user = _auth.currentUser;
     if (user == null) return;
 
-    // Boş alan kontrolü
     if (heartRateController.text.trim().isEmpty ||
         systolicController.text.trim().isEmpty ||
         diastolicController.text.trim().isEmpty ||
@@ -36,7 +93,6 @@ class _VitalInputScreenState extends State<VitalInputScreen> {
       return;
     }
 
-    // Virgül ile girilen değerleri noktaya çevirip parse etme (Örn: 36,5 -> 36.5)
     final tempText = temperatureController.text.replaceAll(',', '.');
 
     final heartRate = int.tryParse(heartRateController.text);
@@ -67,14 +123,16 @@ class _VitalInputScreenState extends State<VitalInputScreen> {
             'diastolic': diastolic,
             'oxygen': oxygen,
             'temperature': temperature,
+            'source': lastHealthData != null ? lastHealthData!.deviceName : 'Manuel Giriş',
             'createdAt': FieldValue.serverTimestamp(),
           });
 
       if (!mounted) return;
 
       _showSnack("Sağlık verileriniz başarıyla kaydedildi.", isError: false);
-      Navigator.pop(context); // İşlem bitince ekranı kapat
+      Navigator.pop(context);
     } catch (_) {
+      if (!mounted) return;
       _showSnack(
         "Kayıt sırasında bir hata oluştu. Lütfen tekrar deneyin.",
         isError: true,
@@ -109,7 +167,6 @@ class _VitalInputScreenState extends State<VitalInputScreen> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      // Ekranda boş bir yere tıklanınca klavyeyi kapatır
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         backgroundColor: const Color(0xFFF8FAFC),
@@ -131,7 +188,7 @@ class _VitalInputScreenState extends State<VitalInputScreen> {
               icon: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.1),
+                  color: Colors.grey.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -155,7 +212,46 @@ class _VitalInputScreenState extends State<VitalInputScreen> {
                 "Güncel değerlerinizi girerek sağlık durumunuzu takip edin.",
                 style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
+
+              // 💚 HEALTH CONNECT SYNC BANNER BUTTON
+              _buildHealthConnectCard(),
+
+              const SizedBox(height: 20),
+
+              if (lastHealthData != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF00C853).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFF00C853).withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.verified_rounded,
+                        color: Color(0xFF00C853),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          "Health Connect: ${lastHealthData!.deviceName} ölçüm değerleri dolduruldu",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF2E7D32),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
 
               _InputCard(
                 icon: Icons.favorite_rounded,
@@ -167,7 +263,6 @@ class _VitalInputScreenState extends State<VitalInputScreen> {
                 textInputAction: TextInputAction.next,
               ),
 
-              // Sistolik ve Diastolik değerlerini yan yana şık bir şekilde alıyoruz
               Row(
                 children: [
                   Expanded(
@@ -216,23 +311,21 @@ class _VitalInputScreenState extends State<VitalInputScreen> {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                textInputAction: TextInputAction
-                    .done, // Son alan olduğu için "Bitti" butonu çıkar
+                textInputAction: TextInputAction.done,
               ),
 
               const SizedBox(height: 32),
 
-              // Kaydet Butonu
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: isLoading ? null : saveVitals,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
-                    disabledBackgroundColor: AppColors.primary.withOpacity(0.5),
+                    disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.5),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     elevation: 4,
-                    shadowColor: AppColors.primary.withOpacity(0.4),
+                    shadowColor: AppColors.primary.withValues(alpha: 0.4),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -256,8 +349,159 @@ class _VitalInputScreenState extends State<VitalInputScreen> {
                         ),
                 ),
               ),
-              const SizedBox(height: 40), // Alt boşluk
+              const SizedBox(height: 40),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHealthConnectCard() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0F9D58), Color(0xFF00C853)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF00C853).withValues(alpha: 0.3),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: isSyncingHealthConnect ? null : () => _fetchFromHealthConnect(),
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              children: [
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.health_and_safety_rounded,
+                        color: Colors.white,
+                        size: 26,
+                      ),
+                    ),
+                    if (isSyncingHealthConnect)
+                      const SizedBox(
+                        width: 44,
+                        height: 44,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.5,
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Flexible(
+                            child: Text(
+                              "Health Connect",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              "OTOMATİK",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        isSyncingHealthConnect
+                            ? "Health Connect'e bağlanılıyor..."
+                            : "Saatinizdeki verileri eşitleyin",
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.88),
+                          fontSize: 12,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isSyncingHealthConnect
+                            ? Icons.sync_rounded
+                            : Icons.download_rounded,
+                        size: 16,
+                        color: const Color(0xFF0F9D58),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        isSyncingHealthConnect ? "Alınıyor" : "Veri Çek",
+                        style: const TextStyle(
+                          color: Color(0xFF0F9D58),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -293,12 +537,10 @@ class _InputCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20), // Daha yumuşak köşeler
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(
-              0.02,
-            ), // Çok hafif, modern bir gölge
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -310,7 +552,7 @@ class _InputCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
+              color: iconColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: iconColor, size: 24),
@@ -348,7 +590,6 @@ class _InputCard extends StatelessWidget {
                     border: InputBorder.none,
                     isDense: true,
                     contentPadding: const EdgeInsets.only(top: 4, bottom: 0),
-                    // Sağ tarafa ölçü birimini ekliyoruz (bpm, % vb.)
                     suffixIconConstraints: const BoxConstraints(
                       minWidth: 0,
                       minHeight: 0,

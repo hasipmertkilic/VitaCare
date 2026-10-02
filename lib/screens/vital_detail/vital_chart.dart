@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-import 'package:vitacare/core/utils/vital_type.dart';
+import '../../core/utils/vital_type.dart';
 
 class VitalChart extends StatelessWidget {
   final VitalType vitalType;
@@ -48,8 +48,9 @@ class VitalChart extends StatelessWidget {
           );
         }
 
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty)
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return _emptyState();
+        }
 
         final docs = snapshot.data!.docs;
         final chartColor = _getChartColor();
@@ -95,12 +96,12 @@ class VitalChart extends StatelessWidget {
 
         if (spots.isEmpty) return _emptyState();
 
-        // 🌡️ ATEŞ İÇİN SABİT 35.5 - 41.0 ARALIĞI VE 0.1 ARTIŞ
+        // 🌡️ ATEŞ İÇİN HASSAS VE TEMİZ ARAYÜZ (0.5 ARALIĞI)
         double minY, maxY, yInterval;
         if (vitalType == VitalType.temperature) {
-          minY = 35.5; // Alt sınır sabit 35.5
-          maxY = 41.0; // Üst sınır sabit 41.0
-          yInterval = 0.1; // 0.1 aralıklarla artış
+          minY = 35.0;
+          maxY = 41.0;
+          yInterval = 0.5;
         } else {
           yInterval = (vitalType == VitalType.oxygen) ? 2.0 : 20.0;
           minY = (rawMinY - yInterval);
@@ -108,23 +109,23 @@ class VitalChart extends StatelessWidget {
         }
 
         return Container(
-          // Yüksekliği biraz daha artırdık ki 0.1'lik aralıklar daha rahat sığsın
           height: 450,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 15,
+              ),
             ],
           ),
           child: Column(
             children: [
               _buildSummary(
                 lastValue: spots.last.y,
-                avg:
-                    spots.map((e) => e.y).reduce((a, b) => a + b) /
-                    spots.length,
+                avg: spots.map((e) => e.y).reduce((a, b) => a + b) / spots.length,
                 min: rawMinY,
                 max: rawMaxY,
                 color: chartColor,
@@ -156,9 +157,7 @@ class VitalChart extends StatelessWidget {
                       horizontalInterval: yInterval,
                       drawVerticalLine: false,
                       getDrawingHorizontalLine: (value) => FlLine(
-                        color: Colors.grey.withOpacity(
-                          0.05,
-                        ), // Çok fazla çizgi olacağı için rengini saydamlaştırdık
+                        color: Colors.grey.withValues(alpha: 0.08),
                         strokeWidth: 1,
                       ),
                     ),
@@ -173,15 +172,15 @@ class VitalChart extends StatelessWidget {
                         sideTitles: SideTitles(
                           showTitles: true,
                           interval: yInterval,
-                          reservedSize: 35, // Sol yazılar için genişlik
+                          reservedSize: 35,
                           getTitlesWidget: (val, meta) {
-                            // 0.1 hassasiyetinde sol yazıları göster
-                            // Ekranda birbirine girerse, buradaki gösterimi sadece çift sayılarda vs ayarlayabilirsin.
                             return Text(
-                              val.toStringAsFixed(1),
+                              vitalType == VitalType.temperature
+                                  ? val.toStringAsFixed(1)
+                                  : val.toInt().toString(),
                               style: const TextStyle(
                                 color: Colors.grey,
-                                fontSize: 9,
+                                fontSize: 10,
                               ),
                             );
                           },
@@ -196,11 +195,14 @@ class VitalChart extends StatelessWidget {
                             int idx = value.toInt();
                             if (idx < 0 ||
                                 idx >= measurementDates.length ||
-                                idx % 4 != 0)
+                                (measurementDates.length > 5 && idx % 2 != 0)) {
                               return const SizedBox();
+                            }
                             final date = measurementDates[idx];
+                            final hourStr = date.hour.toString().padLeft(2, '0');
+                            final minStr = date.minute.toString().padLeft(2, '0');
                             return Text(
-                              "${date.day}/${date.month}\n${date.hour}:${date.minute.toString().padLeft(2, '0')}",
+                              "${date.day}/${date.month}\n$hourStr:$minStr",
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 fontSize: 9,
@@ -224,8 +226,8 @@ class VitalChart extends StatelessWidget {
                           show: true,
                           gradient: LinearGradient(
                             colors: [
-                              chartColor.withOpacity(0.2),
-                              chartColor.withOpacity(0),
+                              chartColor.withValues(alpha: 0.2),
+                              chartColor.withValues(alpha: 0.0),
                             ],
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
@@ -253,7 +255,7 @@ class VitalChart extends StatelessWidget {
     required String unit,
     required bool isFloat,
   }) {
-    String f(double v) => v.toStringAsFixed(1);
+    String f(double v) => isFloat ? v.toStringAsFixed(1) : v.toInt().toString();
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,

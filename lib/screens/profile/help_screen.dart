@@ -7,7 +7,7 @@ class HelpScreen extends StatelessWidget {
 
   static const _faqs = [
     _FaqItem(
-      question: 'Şifremi unutdum, ne yapmalıyım?',
+      question: 'Şifremi unuttum, ne yapmalıyım?',
       answer:
           'Giriş ekranındaki "Şifremi Unuttum" bağlantısına tıklayarak e-posta adresinize sıfırlama bağlantısı gönderebilirsiniz. Gelen kutunuzu ve spam klasörünüzü kontrol etmeyi unutmayın.',
     ),
@@ -80,8 +80,8 @@ class HelpScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    AppColors.primary.withOpacity(0.15),
-                    AppColors.primary.withOpacity(0.05),
+                    AppColors.primary.withValues(alpha: 0.15),
+                    AppColors.primary.withValues(alpha: 0.05),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -93,10 +93,10 @@ class HelpScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.15),
+                      color: AppColors.primary.withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.support_agent_rounded,
                       color: AppColors.primary,
                       size: 26,
@@ -146,7 +146,7 @@ class HelpScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.withValues(alpha: 0.04),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -181,7 +181,7 @@ class HelpScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.withValues(alpha: 0.04),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -204,14 +204,14 @@ class HelpScreen extends StatelessWidget {
                     style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
                   ),
                   const SizedBox(height: 14),
-                  Row(
+                  const Row(
                     children: [
                       Icon(
                         Icons.email_outlined,
                         size: 16,
                         color: AppColors.primary,
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Text(
                         'destek@uygulama.com',
                         style: TextStyle(
@@ -271,7 +271,11 @@ class _FaqTileState extends State<_FaqTile>
   void _toggle() {
     setState(() {
       _isExpanded = !_isExpanded;
-      _isExpanded ? _ctrl.forward() : _ctrl.reverse();
+      if (_isExpanded) {
+        _ctrl.forward();
+      } else {
+        _ctrl.reverse();
+      }
     });
   }
 

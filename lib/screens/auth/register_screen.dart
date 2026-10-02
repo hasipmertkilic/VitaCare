@@ -22,6 +22,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   bool isLoading = false;
+  bool isPasswordVisible = false;
+  bool isConfirmVisible = false;
 
   Future<void> registerUser() async {
     final name = nameController.text.trim();
@@ -33,19 +35,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
         email.isEmpty ||
         password.isEmpty ||
         confirmPassword.isEmpty) {
-      showSnack("Tüm alanları doldur");
+      showSnack("Lütfen tüm alanları doldurun.");
+      return;
+    }
+
+    if (password.length < 6) {
+      showSnack("Şifre en az 6 karakter olmalıdır.");
       return;
     }
 
     if (password != confirmPassword) {
-      showSnack("Şifreler uyuşmuyor");
+      showSnack("Girilen şifreler birbirleriyle uyuşmuyor.");
       return;
     }
 
     try {
       setState(() => isLoading = true);
 
-      // 🔹 AUTH
       final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
@@ -53,7 +59,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       final uid = userCredential.user!.uid;
 
-      // 🔹 FIRESTORE USER PROFILE
       await _firestore.collection('users').doc(uid).set({
         'name': name,
         'email': email,
@@ -62,16 +67,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (!mounted) return;
 
-      showSnack("Kayıt başarılı 🎉");
+      showSnack("Kayıt başarılı 🎉", isError: false);
 
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const MainNavigation()),
       );
     } on FirebaseAuthException catch (e) {
-      showSnack(e.message ?? "Bir hata oluştu");
+      if (!mounted) return;
+      showSnack(e.message ?? "Kayıt sırasında bir hata oluştu.");
     } catch (e) {
-      showSnack("Beklenmeyen bir hata oluştu");
+      if (!mounted) return;
+      showSnack("Beklenmeyen bir hata oluştu.");
     } finally {
       if (mounted) {
         setState(() => isLoading = false);
@@ -79,10 +86,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  void showSnack(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+  void showSnack(String message, {bool isError = true}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red.shade700 : Colors.green.shade700,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
   }
 
   @override
@@ -97,21 +110,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: IconThemeData(color: AppColors.textPrimary),
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: AppColors.textPrimary,
+            size: 20,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
               Text(
-                "Kayıt Ol",
+                "Hesap Oluştur",
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
@@ -120,55 +140,89 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                "Sağlık takibini başlatmak için hesabını oluştur",
-                style: TextStyle(fontSize: 15, color: AppColors.textSecondary),
+                "Sağlık takibini başlatmak için kaydolun",
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 32),
 
               _InputField(
                 hint: "Ad Soyad",
-                icon: Icons.person,
+                icon: Icons.person_outline_rounded,
                 controller: nameController,
               ),
               const SizedBox(height: 16),
 
               _InputField(
                 hint: "E-posta",
-                icon: Icons.email,
+                icon: Icons.email_outlined,
                 controller: emailController,
+                keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 16),
 
               _InputField(
                 hint: "Şifre",
-                icon: Icons.lock,
-                obscure: true,
+                icon: Icons.lock_outline_rounded,
+                obscure: !isPasswordVisible,
                 controller: passwordController,
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    isPasswordVisible
+                        ? Icons.visibility_off_rounded
+                        : Icons.visibility_rounded,
+                    color: Colors.grey,
+                    size: 20,
+                  ),
+                  onPressed: () => setState(() => isPasswordVisible = !isPasswordVisible),
+                ),
               ),
               const SizedBox(height: 16),
 
               _InputField(
                 hint: "Şifre Tekrar",
-                icon: Icons.lock_outline,
-                obscure: true,
+                icon: Icons.lock_outline_rounded,
+                obscure: !isConfirmVisible,
                 controller: confirmPasswordController,
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    isConfirmVisible
+                        ? Icons.visibility_off_rounded
+                        : Icons.visibility_rounded,
+                    color: Colors.grey,
+                    size: 20,
+                  ),
+                  onPressed: () => setState(() => isConfirmVisible = !isConfirmVisible),
+                ),
               ),
               const SizedBox(height: 32),
 
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  elevation: 4,
+                  shadowColor: AppColors.primary.withValues(alpha: 0.3),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
                 onPressed: isLoading ? null : registerUser,
                 child: isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
+                    ? const SizedBox(
+                        height: 22,
+                        width: 22,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.5,
+                        ),
+                      )
                     : const Text(
                         "Hesap Oluştur",
-                        style: TextStyle(fontSize: 16),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
               ),
             ],
@@ -184,12 +238,16 @@ class _InputField extends StatelessWidget {
   final IconData icon;
   final bool obscure;
   final TextEditingController controller;
+  final TextInputType keyboardType;
+  final Widget? suffixIcon;
 
   const _InputField({
     required this.hint,
     required this.icon,
     required this.controller,
     this.obscure = false,
+    this.keyboardType = TextInputType.text,
+    this.suffixIcon,
   });
 
   @override
@@ -197,14 +255,27 @@ class _InputField extends StatelessWidget {
     return TextField(
       controller: controller,
       obscureText: obscure,
+      keyboardType: keyboardType,
+      style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
       decoration: InputDecoration(
         hintText: hint,
-        prefixIcon: Icon(icon),
+        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+        prefixIcon: Icon(icon, color: AppColors.primary),
+        suffixIcon: suffixIcon,
         filled: true,
-        fillColor: const Color(0xFFF5F5F5),
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey.shade200),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
       ),
     );

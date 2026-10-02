@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/theme/app_colors.dart';
+import '../auth/forgot_password_screen.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -120,18 +121,18 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.08),
+                  color: AppColors.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Row(
+                child: const Row(
                   children: [
                     Icon(
                       Icons.info_outline_rounded,
                       color: AppColors.primary,
                       size: 20,
                     ),
-                    const SizedBox(width: 10),
-                    const Expanded(
+                    SizedBox(width: 10),
+                    Expanded(
                       child: Text(
                         'Şifrenizi değiştirmek için önce mevcut şifrenizi girmeniz gerekmektedir.',
                         style: TextStyle(
@@ -154,6 +155,37 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 validator: (val) =>
                     (val == null || val.isEmpty) ? 'Bu alan zorunludur.' : null,
               ),
+              const SizedBox(height: 8),
+
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    final userEmail = FirebaseAuth.instance.currentUser?.email;
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ForgotPasswordScreen(
+                          initialEmail: userEmail,
+                        ),
+                      ),
+                    );
+                  },
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text(
+                    'Mevcut şifrenizi hatırlamıyor musunuz?',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
               const SizedBox(height: 16),
 
               _buildPasswordField(
@@ -165,8 +197,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 validator: (val) {
                   if (val == null || val.isEmpty) return 'Bu alan zorunludur.';
                   if (val.length < 6) return 'En az 6 karakter olmalıdır.';
-                  if (val == _currentPasswordController.text)
+                  if (val == _currentPasswordController.text) {
                     return 'Yeni şifre mevcut şifreyle aynı olamaz.';
+                  }
                   return null;
                 },
               ),
@@ -180,8 +213,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 onToggle: () => setState(() => _showConfirm = !_showConfirm),
                 validator: (val) {
                   if (val == null || val.isEmpty) return 'Bu alan zorunludur.';
-                  if (val != _newPasswordController.text)
+                  if (val != _newPasswordController.text) {
                     return 'Şifreler eşleşmiyor.';
+                  }
                   return null;
                 },
               ),
@@ -269,7 +303,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),

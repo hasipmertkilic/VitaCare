@@ -7,16 +7,14 @@ class BloodPressureChart extends StatelessWidget {
   const BloodPressureChart({super.key});
 
   Stream<QuerySnapshot<Map<String, dynamic>>> _getHistory() {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return const Stream.empty();
 
     return FirebaseFirestore.instance
         .collection('users')
-        .doc(uid)
+        .doc(user.uid)
         .collection('vitals')
-        .orderBy(
-          'createdAt',
-          descending: false,
-        ) // Eskiden yeniye sıralama garantisi
+        .orderBy('createdAt', descending: false)
         .limit(15)
         .snapshots();
   }
@@ -34,7 +32,7 @@ class BloodPressureChart extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
+                  color: Colors.black.withValues(alpha: 0.02),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -55,7 +53,7 @@ class BloodPressureChart extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
+                  color: Colors.black.withValues(alpha: 0.02),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -118,7 +116,7 @@ class BloodPressureChart extends StatelessWidget {
         if (minY < 0) minY = 0;
 
         double maxY = ((rawMaxY + 20) / 20).ceil() * 20.0;
-        if (maxY < 140) maxY = 140; // 120 normal çizgisini rahat görmek için
+        if (maxY < 140) maxY = 140;
         if (maxY == minY) maxY += 20;
 
         double xInterval = docs.length > 7
@@ -133,7 +131,7 @@ class BloodPressureChart extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.03),
+                color: Colors.black.withValues(alpha: 0.03),
                 blurRadius: 15,
                 offset: const Offset(0, 8),
               ),
@@ -149,12 +147,12 @@ class BloodPressureChart extends StatelessWidget {
                   _buildLegendItem(
                     "Sistolik",
                     const Color(0xFFFF6B6B),
-                  ), // Modern Kırmızı
+                  ),
                   const SizedBox(width: 24),
                   _buildLegendItem(
                     "Diyastolik",
                     const Color(0xFF4D96FF),
-                  ), // Modern Mavi
+                  ),
                 ],
               ),
               const SizedBox(height: 32),
@@ -208,7 +206,7 @@ class BloodPressureChart extends StatelessWidget {
                       horizontalLines: [
                         HorizontalLine(
                           y: 120,
-                          color: const Color(0xFFFF6B6B).withOpacity(0.3),
+                          color: const Color(0xFFFF6B6B).withValues(alpha: 0.3),
                           strokeWidth: 1.5,
                           dashArray: [5, 5],
                           label: HorizontalLineLabel(
@@ -217,7 +215,7 @@ class BloodPressureChart extends StatelessWidget {
                             padding: const EdgeInsets.only(bottom: 4),
                             labelResolver: (_) => "120",
                             style: TextStyle(
-                              color: const Color(0xFFFF6B6B).withOpacity(0.8),
+                              color: const Color(0xFFFF6B6B).withValues(alpha: 0.8),
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
@@ -225,7 +223,7 @@ class BloodPressureChart extends StatelessWidget {
                         ),
                         HorizontalLine(
                           y: 80,
-                          color: const Color(0xFF4D96FF).withOpacity(0.3),
+                          color: const Color(0xFF4D96FF).withValues(alpha: 0.3),
                           strokeWidth: 1.5,
                           dashArray: [5, 5],
                           label: HorizontalLineLabel(
@@ -234,7 +232,7 @@ class BloodPressureChart extends StatelessWidget {
                             padding: const EdgeInsets.only(bottom: 4),
                             labelResolver: (_) => "80",
                             style: TextStyle(
-                              color: const Color(0xFF4D96FF).withOpacity(0.8),
+                              color: const Color(0xFF4D96FF).withValues(alpha: 0.8),
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
@@ -247,11 +245,10 @@ class BloodPressureChart extends StatelessWidget {
                     gridData: FlGridData(
                       show: true,
                       horizontalInterval: 20,
-                      drawVerticalLine:
-                          false, // Sadece yatay çizgiler kalsın (Daha temiz)
+                      drawVerticalLine: false,
                       getDrawingHorizontalLine: (value) {
                         return FlLine(
-                          color: Colors.grey.withOpacity(0.1),
+                          color: Colors.grey.withValues(alpha: 0.1),
                           strokeWidth: 1,
                         );
                       },
@@ -294,8 +291,9 @@ class BloodPressureChart extends StatelessWidget {
                           reservedSize: 28,
                           getTitlesWidget: (value, meta) {
                             int index = value.toInt();
-                            if (index < 0 || index >= measurementDates.length)
+                            if (index < 0 || index >= measurementDates.length) {
                               return const SizedBox();
+                            }
 
                             DateTime date = measurementDates[index];
                             String dayMonth =
@@ -322,7 +320,7 @@ class BloodPressureChart extends StatelessWidget {
                       show: true,
                       border: Border(
                         bottom: BorderSide(
-                          color: Colors.grey.withOpacity(0.2),
+                          color: Colors.grey.withValues(alpha: 0.2),
                           width: 1.5,
                         ),
                         left: const BorderSide(color: Colors.transparent),
@@ -342,8 +340,7 @@ class BloodPressureChart extends StatelessWidget {
                         barWidth: 3.5,
                         isStrokeCapRound: true,
                         dotData: FlDotData(
-                          show:
-                              true, // Dokunma hissi için noktalar her zaman kalsın ama küçük olsun
+                          show: true,
                           getDotPainter: (spot, percent, barData, index) {
                             return FlDotCirclePainter(
                               radius: 3,
@@ -357,8 +354,8 @@ class BloodPressureChart extends StatelessWidget {
                           show: true,
                           gradient: LinearGradient(
                             colors: [
-                              const Color(0xFFFF6B6B).withOpacity(0.25),
-                              const Color(0xFFFF6B6B).withOpacity(0.0),
+                              const Color(0xFFFF6B6B).withValues(alpha: 0.25),
+                              const Color(0xFFFF6B6B).withValues(alpha: 0.0),
                             ],
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
@@ -389,8 +386,8 @@ class BloodPressureChart extends StatelessWidget {
                           show: true,
                           gradient: LinearGradient(
                             colors: [
-                              const Color(0xFF4D96FF).withOpacity(0.25),
-                              const Color(0xFF4D96FF).withOpacity(0.0),
+                              const Color(0xFF4D96FF).withValues(alpha: 0.25),
+                              const Color(0xFF4D96FF).withValues(alpha: 0.0),
                             ],
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
@@ -399,7 +396,7 @@ class BloodPressureChart extends StatelessWidget {
                       ),
                     ],
                   ),
-                  duration: const Duration(milliseconds: 600), // Yeni kullanım
+                  duration: const Duration(milliseconds: 600),
                   curve: Curves.easeInOutCubic,
                 ),
               ),
@@ -410,7 +407,6 @@ class BloodPressureChart extends StatelessWidget {
     );
   }
 
-  // 🏷️ Yardımcı Widget: Gösterge Oluşturucu
   Widget _buildLegendItem(String title, Color color) {
     return Row(
       mainAxisSize: MainAxisSize.min,

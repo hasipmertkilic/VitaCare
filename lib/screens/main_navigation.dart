@@ -74,7 +74,7 @@ class _MainNavigationState extends State<MainNavigation> {
       bottomNavigationBar: BottomAppBar(
         color: Colors.white,
         elevation: 8,
-        shadowColor: Colors.black.withOpacity(0.2),
+        shadowColor: Colors.black.withValues(alpha: 0.2),
         shape: const CircularNotchedRectangle(),
         notchMargin: 10, // Kavis boşluğunu biraz artırdık ki daha şık dursun
         child: SafeArea(
